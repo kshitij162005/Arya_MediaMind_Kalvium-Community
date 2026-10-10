@@ -45,8 +45,10 @@ import ResearchDashboardView from './components/ResearchDashboardView';
 import UploadDocumentsView from './components/UploadDocumentsView';
 import SearchHistoryView from './components/SearchHistoryView';
 import SavedResearchView from './components/SavedResearchView';
+import TerminalAuthView from './components/TerminalAuthView';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeNav, setActiveNav] = useState('saved');
   const [activeCitationId, setActiveCitationId] = useState(1);
   const [density, setDensity] = useState('High'); // 'High' | 'Comfortable'
@@ -168,8 +170,17 @@ export default function App() {
         />
       )}
 
-      {/* APP BODY LAYOUT - FULL HEIGHT SIDEBAR + MAIN COLUMN */}
-      <div className="mm-app-layout">
+      {/* TERMINAL AUTH VIEW OR APP BODY LAYOUT */}
+      {!isAuthenticated ? (
+        <TerminalAuthView
+          onLoginSuccess={() => {
+            setIsAuthenticated(true);
+            showToast('Authenticated via TLS 1.3 Strict Enclave. Welcome Elena Rostova.', 'success');
+          }}
+          showToast={showToast}
+        />
+      ) : (
+        <div className="mm-app-layout">
         {/* LEFT SIDEBAR NAVIGATION */}
         <aside className="mm-sidebar">
           {/* Brand Header at top of sidebar */}
@@ -289,8 +300,11 @@ export default function App() {
               </div>
               <button 
                 className="user-menu-btn" 
-                title="Account Settings"
-                onClick={() => showToast('Elena Rostova · Senior Investigative Editor (Credentialed)', 'info')}
+                title="Lock Terminal Enclave"
+                onClick={() => {
+                  setIsAuthenticated(false);
+                  showToast('Terminal session locked. Returning to authorization enclave.', 'info');
+                }}
               >
                 <MoreVertical size={14} />
               </button>
@@ -337,7 +351,14 @@ export default function App() {
                 <span className="notification-amber-dot"></span>
               </button>
 
-              <div className="user-avatar-hex" title="Elena Rostova — Investigative Bureau">
+              <div 
+                className="user-avatar-hex" 
+                title="Elena Rostova — Click to Lock Terminal"
+                onClick={() => {
+                  setIsAuthenticated(false);
+                  showToast('Terminal session locked. Returning to authorization enclave.', 'info');
+                }}
+              >
                 <span className="avatar-initials">MM</span>
               </div>
             </div>
@@ -813,9 +834,10 @@ export default function App() {
           </div>
         </>
       )}
-      </main>
+          </main>
+        </div>
       </div>
+      )}
     </div>
-  </div>
   );
 }
