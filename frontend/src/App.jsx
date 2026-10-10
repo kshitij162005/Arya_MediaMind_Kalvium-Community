@@ -44,9 +44,10 @@ import ResearchResultsView from './components/ResearchResultsView';
 import ResearchDashboardView from './components/ResearchDashboardView';
 import UploadDocumentsView from './components/UploadDocumentsView';
 import SearchHistoryView from './components/SearchHistoryView';
+import SavedResearchView from './components/SavedResearchView';
 
 export default function App() {
-  const [activeNav, setActiveNav] = useState('history');
+  const [activeNav, setActiveNav] = useState('saved');
   const [activeCitationId, setActiveCitationId] = useState(1);
   const [density, setDensity] = useState('High'); // 'High' | 'Comfortable'
   const [isDualPane, setIsDualPane] = useState(true);
@@ -377,6 +378,17 @@ export default function App() {
               />
             ) : activeNav === 'history' ? (
               <SearchHistoryView
+                onNavigateToResults={(query) => {
+                  setActiveNav('results');
+                }}
+                onOpenPdf={(citationId) => {
+                  setActiveCitationId(citationId);
+                  setIsPdfModalOpen(true);
+                }}
+                showToast={showToast}
+              />
+            ) : activeNav === 'saved' ? (
+              <SavedResearchView
                 onNavigateToResults={(query) => {
                   setActiveNav('results');
                 }}
