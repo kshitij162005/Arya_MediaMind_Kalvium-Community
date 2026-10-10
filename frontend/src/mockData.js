@@ -395,3 +395,150 @@ export const SEARCH_HISTORY_ITEMS = [
   }
 ];
 
+export const SAVED_RESEARCH_METRICS = {
+  activeDossiers: 8,
+  sourceIntegrity: '99.4% Verified Primary',
+  pinnedEvidenceCount: '142 Document Links',
+  pinnedEvidenceSub: '+18 added this week',
+  peerAuditCount: '3 Active Co-Leads',
+  peerAuditSub: 'Rostova, Sundaram, Bannerjee',
+  foiSubpoenaCount: '2 Pending Unseals',
+  foiSubpoenaSub: 'Next target: 14 Oct 2024',
+  storageFootprint: '5.4 GB of evidentiary scans, OCR transcripts, and cached audio attached across 8 dossiers',
+  backupInfo: 'Last automated backup: 14 mins ago · SHA-256 Checksum: a9f82...78c1',
+  crawlerStatus: '3 automated court crawlers scanning regional dockets for upcoming hearings.'
+};
+
+export const SAVED_DOSSIERS_DATA = [
+  {
+    id: 'dossier-mum-2019',
+    dossierCode: 'DOSSIER #MUM-2019-COASTAL',
+    statusBadge: 'ACTIVE INVESTIGATION',
+    statusType: 'active',
+    desk: 'Investigative',
+    deskLabel: 'Special Projects',
+    title: '2019 South Mumbai Coastal Reclamation Rallies & Municipal Clearances',
+    inquiryQuote: '“What happened during the 2019 protests in Mumbai?”',
+    summary: 'Chronology and escalation metrics cross-referenced against 1,420 regional publications, port manifest...',
+    stats: [
+      { label: '8 Sources', type: 'standard' },
+      { label: '14 Anchored Footnotes', type: 'standard' },
+      { label: '99.2% Grounding', type: 'cyan' }
+    ],
+    pinnedEvidence: [
+      { label: 'Govt Gazette #402', icon: 'file' },
+      { label: 'Daily Chronicle June 18', icon: 'newspaper' },
+      { label: 'Tape #412', icon: 'tape' }
+    ],
+    tags: ['#Mumbai', '#UrbanPolicy', '#Protests2019', '#BMC', '#EnvironmentalLaw'],
+    meta: 'Today, 11:35 AM · Elena Rosto...',
+    primaryAction: 'Open Dossier',
+    primaryActionType: 'solid-cyan',
+    citationId: 1
+  },
+  {
+    id: 'dossier-dip-2020',
+    dossierCode: 'DOSSIER #DIP-2020-BORDER',
+    statusBadge: 'CONFIDENTIAL / IN-PROGRESS',
+    statusType: 'confidential',
+    desk: 'Foreign Desk',
+    deskLabel: 'Foreign Affairs',
+    title: 'Sino-Indian Diplomatic Cables & Buffer Zone Renegotiations (2015–2020)',
+    inquiryQuote: '“Indo-China border diplomatic cables & summit notes (2015-2020)”',
+    summary: 'Internal ministerial telegrams and declassified embassy notes examining shifts in Galwan and...',
+    stats: [
+      { label: '21 Sources', type: 'standard' },
+      { label: '18 Passages', type: 'standard' },
+      { label: '12 Restricted Cables', type: 'amber' }
+    ],
+    pinnedEvidence: [
+      { label: 'Tele-Amb-ND-409', icon: 'file' },
+      { label: 'LAC Coordinate Ledger', icon: 'map' }
+    ],
+    tags: ['#Diplomacy', '#Declassified', '#BorderProtocols', '#ForeignDesk'],
+    meta: 'Yesterday · Elena Rostova',
+    primaryAction: 'Open Dossier',
+    primaryActionType: 'outline-dark',
+    citationId: 2
+  },
+  {
+    id: 'dossier-env-2024',
+    dossierCode: 'DOSSIER #ENV-2024-MANGROVE',
+    statusBadge: 'PUBLISHED STORY // ARCHIVED',
+    statusType: 'archived',
+    desk: 'Environmental',
+    deskLabel: 'Environment',
+    title: 'Informal Coastal Settlements and Land Reclamation Impact (2010–2018)',
+    inquiryQuote: '“Interviews with climate activists and coastal ecologists before 2018”',
+    summary: '6 unbroadcast taped interviews and field surveys detailing community displacement along the Tha...',
+    stats: [
+      { label: '14 Sources', type: 'cyan-badge' },
+      { label: '4 Field Surveys', type: 'standard' },
+      { label: '6 Audio Reels', type: 'standard' }
+    ],
+    pinnedEvidence: [
+      { label: 'Thane Creek Oral Tapes', icon: 'tape' },
+      { label: 'GPS Grid Survey 2016', icon: 'map' }
+    ],
+    tags: ['#Ecology', '#Displacement', '#AudioArchive', '#CoastalEcology'],
+    meta: 'Published: 28 Sep 2024 · K. Sunda...',
+    primaryAction: 'Archive View',
+    primaryActionType: 'dark',
+    secondaryAction: 'Story Link',
+    citationId: 8
+  },
+  {
+    id: 'dossier-fin-2024',
+    dossierCode: 'DOSSIER #FIN-2024-NAGPUR',
+    statusBadge: 'PRE-INQUIRY // SCOPING',
+    statusType: 'scoping',
+    desk: 'Investigative',
+    deskLabel: 'Financial Desk',
+    title: 'Nagpur Fishery Syndicate Offshore Financial Transactions & Audits',
+    inquiryQuote: '“Nagpur Fishery Syndicate wire transfers and shell bank correspondence 2014-2016”',
+    summary: 'Microfilm records cross-referenced with port authority clearing notes; waiting on FOI documen...',
+    stats: [
+      { label: '9 Sources', type: 'standard' },
+      { label: '3 Microfilms', type: 'standard' },
+      { label: '1 PII Redaction', type: 'amber' }
+    ],
+    pinnedEvidence: [
+      { label: 'Microfilm Reel #090', icon: 'tape' },
+      { label: 'FOI Application #711', icon: 'file' }
+    ],
+    tags: ['#FinancialForensics', '#Offshore', '#PortAuthority', '#Microfilm'],
+    meta: 'Created: 11 Sep 2024 · Elena Ro...',
+    primaryAction: 'Open Dossier',
+    primaryActionType: 'dark',
+    exportAction: true,
+    citationId: 4
+  },
+  {
+    id: 'dossier-leg-2024',
+    dossierCode: 'DOSSIER #LEG-2024-APPELLATE',
+    statusBadge: 'COLLABORATIVE INQUIRY',
+    statusType: 'collaborative',
+    desk: 'Political',
+    deskLabel: 'Legal Desk',
+    title: 'State Appellate Court Stay Orders on Special Economic Zones (2016–2022)',
+    inquiryQuote: '“Appellate rulings overturning commercial SEZ clearances on ecological grounds”',
+    summary: 'Comparative case law synthesis covering 34 judicial bench decisions and dissenting environmental...',
+    stats: [
+      { label: '32 Decisions', type: 'standard' },
+      { label: '8 SC Precedents', type: 'standard' },
+      { label: '100% Attribution', type: 'cyan' }
+    ],
+    pinnedEvidence: [
+      { label: 'Bombay HC Judgment 419/18', icon: 'file' },
+      { label: 'SZ Bench Dissent (2021)', icon: 'file' }
+    ],
+    tags: ['#Judicial', '#SEZ', '#HighCourt', '#EnvironmentalLitigation'],
+    meta: '5 days ago · M. Bannerjee & Elena ...',
+    primaryAction: 'Open Dossier',
+    primaryActionType: 'dark',
+    exportAction: true,
+    citationId: 3
+  }
+];
+
+
