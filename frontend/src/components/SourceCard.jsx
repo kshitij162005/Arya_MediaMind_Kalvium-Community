@@ -1,4 +1,4 @@
-import { CONTENT_TYPE_LABELS, formatDate } from '../api';
+import { SOURCE_TYPE_LABELS, formatDate } from '../api';
 
 export function SourceMeta({ source }) {
   // Web pages have no reliable publication date; the domain stands in for the publication.
@@ -6,14 +6,14 @@ export function SourceMeta({ source }) {
   return (
     <div className="meta">
       <span className={`badge ${source.content_type === 'web' ? 'web' : ''}`}>
-        {CONTENT_TYPE_LABELS[source.content_type] ?? source.content_type}
+        {SOURCE_TYPE_LABELS[source.content_type] ?? source.content_type}
       </span>
       {[source.author, source.publication, date].filter(Boolean).join(' · ')}
     </div>
   );
 }
 
-export default function SourceCard({ source, onViewPassage, onOpen }) {
+export default function SourceCard({ source, onViewPassage, onOpen, onSave }) {
   const isWeb = source.content_type === 'web';
   return (
     <article className={`card source ${source.cited ? '' : 'uncited'}`}>
@@ -25,7 +25,14 @@ export default function SourceCard({ source, onViewPassage, onOpen }) {
         <div className="source-actions">
           <button className="link" onClick={onViewPassage}>View passage</button>
           {isWeb ? (
-            <a className="link" href={source.url} target="_blank" rel="noopener noreferrer">Open page ↗</a>
+            <>
+              <a className="link" href={source.url} target="_blank" rel="noopener noreferrer">Open page ↗</a>
+              {source.in_archive ? (
+                <span className="muted small">✓ In archive</span>
+              ) : (
+                <button className="link" onClick={onSave}>Save to archive</button>
+              )}
+            </>
           ) : (
             <button className="link" onClick={onOpen}>Open document</button>
           )}
