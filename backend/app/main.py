@@ -14,6 +14,7 @@ from .db import get_conn, init_db, log_search, row_to_dict
 from .ingest import IngestError, delete_document, ingest_document
 from .rag import answer_question, get_passage
 from .vectorstore import get_vector_store
+from .web import answer_from_web
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -90,6 +91,19 @@ def search(body: SearchBody, user=Depends(auth.current_user)):
     result = answer_question(body.query, filters)
     result["took_ms"] = int((time.perf_counter() - t0) * 1000)
     log_search(user["id"], body.query, filters, len(result["sources"]), result["sufficient"])
+    return result
+
+
+class WebSearchBody(BaseModel):
+    query: str = Field(min_length=3, max_length=500)
+
+
+@app.post("/api/search/web")
+def search_web(body: WebSearchBody, user=Depends(auth.current_user)):
+    """Opt-in fallback when the archive has no answer. Results are not added to the archive."""
+    t0 = time.perf_counter()
+    result = answer_from_web(body.query)
+    result["took_ms"] = int((time.perf_counter() - t0) * 1000)
     return result
 
 

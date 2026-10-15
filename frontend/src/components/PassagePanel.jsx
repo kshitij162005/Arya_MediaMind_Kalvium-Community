@@ -10,13 +10,17 @@ export default function PassagePanel({ citation, onClose, onOpenDocument }) {
   const start = claim ? claim.start : source.start;
   const end = claim ? claim.end : source.end;
 
-  const [passage, setPassage] = useState(null);
+  // Web results arrive with their passage attached, since web pages are not stored.
+  const preloaded = (claim ?? source).passage ?? null;
+  const isWeb = source.content_type === 'web';
+  const [passage, setPassage] = useState(preloaded);
   const [error, setError] = useState('');
 
   // Parent re-keys this panel per citation, so state starts fresh for each one.
   useEffect(() => {
+    if (preloaded) return;
     api.passage(docId, start, end).then(setPassage).catch((e) => setError(e.message));
-  }, [docId, start, end]);
+  }, [docId, start, end, preloaded]);
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -29,7 +33,7 @@ export default function PassagePanel({ citation, onClose, onOpenDocument }) {
       <div className="scrim" onClick={onClose} />
       <aside className="panel" role="dialog" aria-label="Source passage">
         <div className="panel-head">
-          <span className="muted small">Source {source.n}</span>
+          <span className="muted small">{isWeb ? 'Web source' : 'Source'} {source.n}</span>
           <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
 
@@ -43,7 +47,7 @@ export default function PassagePanel({ citation, onClose, onOpenDocument }) {
           </div>
         )}
 
-        <span className="muted small">{claim ? 'Exact passage in original document' : 'Best matching passage'}</span>
+        <span className="muted small">{claim ? `Exact passage in original ${isWeb ? 'page' : 'document'}` : 'Best matching passage'}</span>
         {error && <div className="alert error">{error}</div>}
         {!passage && !error && <div className="skeleton small" />}
         {passage && (
@@ -54,9 +58,15 @@ export default function PassagePanel({ citation, onClose, onOpenDocument }) {
           </div>
         )}
 
-        <button className="btn block" onClick={() => onOpenDocument({ docId, start, end })}>
-          Open full document
-        </button>
+        {isWeb ? (
+          <a className="btn block" href={source.url} target="_blank" rel="noopener noreferrer">
+            Open web page ↗
+          </a>
+        ) : (
+          <button className="btn block" onClick={() => onOpenDocument({ docId, start, end })}>
+            Open full document
+          </button>
+        )}
       </aside>
     </>
   );

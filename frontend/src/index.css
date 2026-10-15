@@ -427,3 +427,11 @@ mark { background: var(--highlight); color: var(--text); border-radius: 3px; pad
   .history-item { flex-direction: column; align-items: flex-start; gap: 4px; }
   .history-query { white-space: normal; }
 }
+
+/* ---------- web fallback ---------- */
+.web-btn { margin-top: 10px; }
+a.btn { color: inherit; text-decoration: none; }
+.web-answer { border-color: var(--warn); }
+.web-answer h2 { display: inline-flex; align-items: center; gap: 8px; }
+.web-warning { color: var(--warn); margin: -6px 0 14px; }
+.badge.web { border-color: var(--warn); color: var(--warn); }

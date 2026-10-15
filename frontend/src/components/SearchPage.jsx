@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Search, SlidersHorizontal, AlertTriangle } from 'lucide-react';
+import { Search, SlidersHorizontal, AlertTriangle, Globe } from 'lucide-react';
 import { api } from '../api';
 import Filters from './Filters';
 import { EMPTY_FILTERS, activeFilterCount } from '../filters';
@@ -28,6 +28,45 @@ function suggestionsFrom(docs) {
   return out;
 }
 
+function AnswerText({ result, citation, onCite }) {
+  const sourcesByN = Object.fromEntries(result.sources.map((s) => [s.n, s]));
+  return (
+    <p className="answer-text">
+      {result.answer.map((claim, i) => (
+        <span key={i}>
+          {claim.text}{' '}
+          <button
+            className={`cite ${citation?.claim === claim ? 'active' : ''}`}
+            onClick={() => onCite({ claim, source: sourcesByN[claim.source] })}
+            title={`Verify against source ${claim.source}`}
+          >
+            {claim.source}
+          </button>{' '}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function SourceList({ title, sources, onCite, onOpen }) {
+  if (!sources.length) return null;
+  return (
+    <section>
+      <h2 className="section-title">{title}</h2>
+      <div className="source-list">
+        {sources.map((s) => (
+          <SourceCard
+            key={s.doc_id}
+            source={s}
+            onViewPassage={() => onCite({ source: s })}
+            onOpen={() => onOpen({ docId: s.doc_id, start: s.start, end: s.end })}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function SearchPage({ ref, active }) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -38,6 +77,7 @@ export default function SearchPage({ ref, active }) {
   const [error, setError] = useState('');
   const [citation, setCitation] = useState(null); // { claim?, source }
   const [viewerDoc, setViewerDoc] = useState(null); // { docId, start, end }
+  const [web, setWeb] = useState(null); // { loading, result?, error? } for the opt-in web fallback
   const lastQuery = useRef('');
   const requestId = useRef(0);
 
@@ -65,6 +105,7 @@ export default function SearchPage({ ref, active }) {
     setLoading(true);
     setError('');
     setCitation(null);
+    setWeb(null);
     try {
       const res = await api.search(text, f);
       if (id === requestId.current) setResult(res);
@@ -86,12 +127,22 @@ export default function SearchPage({ ref, active }) {
     },
   }));
 
+  const searchWeb = async () => {
+    const id = requestId.current;
+    setWeb({ loading: true });
+    try {
+      const res = await api.searchWeb(lastQuery.current);
+      if (id === requestId.current) setWeb({ result: res });
+    } catch (err) {
+      if (id === requestId.current) setWeb({ error: err.message });
+    }
+  };
+
   const changeFilters = (next) => {
     setFilters(next);
     if (lastQuery.current) runSearch(lastQuery.current, next);
   };
 
-  const sourcesByN = Object.fromEntries((result?.sources ?? []).map((s) => [s.n, s]));
   const filterCount = activeFilterCount(filters);
   const hasResults = result || loading || error;
 
@@ -156,20 +207,7 @@ export default function SearchPage({ ref, active }) {
 
             {result.sufficient ? (
               <>
-                <p className="answer-text">
-                  {result.answer.map((claim, i) => (
-                    <span key={i}>
-                      {claim.text}{' '}
-                      <button
-                        className={`cite ${citation?.claim === claim ? 'active' : ''}`}
-                        onClick={() => setCitation({ claim, source: sourcesByN[claim.source] })}
-                        title={`Verify against source ${claim.source}`}
-                      >
-                        {claim.source}
-                      </button>{' '}
-                    </span>
-                  ))}
-                </p>
+                <AnswerText result={result} citation={citation} onCite={setCitation} />
                 <p className="muted small note">
                   Extracted verbatim from archive documents. Click a number to see the exact passage.
                 </p>
@@ -183,25 +221,45 @@ export default function SearchPage({ ref, active }) {
                     No archived document answers this question with confidence, so no answer was generated.
                     {filterCount > 0 && ' Try removing some filters.'}
                   </p>
+                  {!web && (
+                    <button className="btn small web-btn" onClick={searchWeb}>
+                      <Globe size={14} /> Search the web instead
+                    </button>
+                  )}
                 </div>
               </div>
             )}
           </section>
 
-          {result.sources.length > 0 && (
-            <section>
-              <h2 className="section-title">Sources</h2>
-              <div className="source-list">
-                {result.sources.map((s) => (
-                  <SourceCard
-                    key={s.doc_id}
-                    source={s}
-                    onViewPassage={() => setCitation({ source: s })}
-                    onOpen={() => setViewerDoc({ docId: s.doc_id, start: s.start, end: s.end })}
-                  />
-                ))}
-              </div>
-            </section>
+          <SourceList title="Sources" sources={result.sources} onCite={setCitation} onOpen={setViewerDoc} />
+
+          {web?.loading && <div className="card skeleton" />}
+          {web?.error && <div className="alert error">Web search failed: {web.error}</div>}
+          {web?.result && (
+            <>
+              <section className="card answer web-answer">
+                <div className="section-head">
+                  <h2><Globe size={16} /> From the web</h2>
+                  <span className="muted small">
+                    {web.result.pages_read} page{web.result.pages_read === 1 ? '' : 's'} read · {web.result.took_ms} ms
+                  </span>
+                </div>
+                <p className="web-warning small">
+                  Not from the archive and not verified by the newsroom. Check each source before using it.
+                </p>
+                {web.result.sufficient ? (
+                  <AnswerText result={web.result} citation={citation} onCite={setCitation} />
+                ) : (
+                  <p className="muted">The web search didn't turn up anything that answers this question.</p>
+                )}
+                {web.result.failed_providers.length > 0 && (
+                  <p className="muted small note">
+                    Unavailable right now: {web.result.failed_providers.join(', ')}.
+                  </p>
+                )}
+              </section>
+              <SourceList title="Web sources" sources={web.result.sources} onCite={setCitation} onOpen={setViewerDoc} />
+            </>
           )}
         </div>
       )}

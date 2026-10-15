@@ -42,6 +42,7 @@ export const api = {
   me: () => request('/auth/me'),
 
   search: (query, filters) => request('/search', { method: 'POST', body: { query, filters } }),
+  searchWeb: (query) => request('/search/web', { method: 'POST', body: { query } }),
   facets: () => request('/facets'),
   history: () => request('/searches'),
   clearHistory: () => request('/searches', { method: 'DELETE' }),
@@ -65,6 +66,7 @@ export const CONTENT_TYPE_LABELS = {
   interview: 'Interview',
   footage_notes: 'Footage notes',
   document: 'Document',
+  web: 'Web',
 };
 
 export function formatDate(iso) {
