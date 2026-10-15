@@ -13,7 +13,7 @@ export function SourceMeta({ source }) {
   );
 }
 
-export default function SourceCard({ source, onViewPassage, onOpen, onSave }) {
+export default function SourceCard({ source, onViewPassage, onOpen, onSave, showScore = true }) {
   const isWeb = source.content_type === 'web';
   return (
     <article className={`card source ${source.cited ? '' : 'uncited'}`}>
@@ -37,7 +37,7 @@ export default function SourceCard({ source, onViewPassage, onOpen, onSave }) {
             <button className="link" onClick={onOpen}>Open document</button>
           )}
           <span className="muted small push">
-            {source.cited ? 'Cited' : 'Related, not cited'} · {Math.round(source.score * 100)}% match
+            {source.cited ? 'Cited' : 'Related, not cited'}{showScore && ` · ${Math.round(source.score * 100)}% match`}
           </span>
         </div>
       </div>

@@ -140,6 +140,37 @@ def facets(user=Depends(auth.current_user)):
         }
 
 
+@app.get("/api/overview")
+def overview(user=Depends(auth.current_user)):
+    """Numbers and recent activity for the search home screen."""
+    with get_conn() as conn:
+        docs, passages, year_min, year_max = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(chunk_count), 0), MIN(year), MAX(year) FROM documents").fetchone()
+        by_type = dict(conn.execute("SELECT content_type, COUNT(*) FROM documents GROUP BY content_type").fetchall())
+        topics = [{"topic": t, "count": c} for t, c in conn.execute(
+            "SELECT topic, COUNT(*) AS c FROM documents WHERE topic IS NOT NULL AND topic != '' "
+            "GROUP BY topic ORDER BY c DESC, topic LIMIT 10")]
+        recent_docs = [dict(r) for r in conn.execute(
+            f"SELECT {DOC_LIST_FIELDS} FROM documents ORDER BY created_at DESC, rowid DESC LIMIT 20")]
+        searches, answered = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(sufficient), 0) FROM searches WHERE user_id = ?", (user["id"],)).fetchone()
+        recent_searches = [dict(r) for r in conn.execute(
+            "SELECT id, query, result_count, sufficient, created_at FROM searches WHERE user_id = ? "
+            "ORDER BY id DESC LIMIT 5", (user["id"],))]
+    return {
+        "documents": docs,
+        "passages": passages,
+        "year_min": year_min,
+        "year_max": year_max,
+        "by_type": by_type,
+        "topics": topics,
+        "recent_documents": recent_docs,
+        "searches": searches,
+        "answered": answered,
+        "recent_searches": [{**s, "sufficient": bool(s["sufficient"])} for s in recent_searches],
+    }
+
+
 # ---------- documents ----------
 
 @app.get("/api/documents")
