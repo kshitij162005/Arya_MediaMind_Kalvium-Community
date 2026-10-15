@@ -54,18 +54,23 @@ def build_where(filters: dict) -> dict | None:
 
 # ---------- pipeline steps ----------
 
-def retrieve(inputs: dict) -> dict:
-    hits = get_vector_store().similarity_search_with_relevance_scores(
-        inputs["query"], k=TOP_K, filter=build_where(inputs.get("filters") or {})
-    )
-    # Hybrid gate: a chunk counts as evidence only if it is semantically close AND shares
-    # vocabulary with the question (or is very close semantically). This is what lets the
-    # system say "not found" instead of stretching an unrelated document into an answer.
-    q_terms = _terms(inputs["query"])
+def gate_hits(query: str, hits: list) -> tuple[list, set[str]]:
+    """Hybrid gate: a chunk counts as evidence only if it is semantically close AND shares
+    vocabulary with the question (or is very close semantically). This is what lets the
+    system say "not found" instead of stretching an unrelated document into an answer."""
+    q_terms = _terms(query)
     evidence = [
         (doc, score) for doc, score in hits
         if score >= STRONG_RELEVANCE or (score >= MIN_RELEVANCE and _overlap(q_terms, doc.page_content) > 0)
     ]
+    return evidence, q_terms
+
+
+def retrieve(inputs: dict) -> dict:
+    hits = get_vector_store().similarity_search_with_relevance_scores(
+        inputs["query"], k=TOP_K, filter=build_where(inputs.get("filters") or {})
+    )
+    evidence, q_terms = gate_hits(inputs["query"], hits)
     return {**inputs, "hits": evidence, "q_terms": q_terms}
 
 
@@ -102,6 +107,7 @@ def compose_answer(inputs: dict) -> dict:
                 "date": m.get("date") or None,
                 "content_type": m["content_type"],
                 "topic": m.get("topic") or None,
+                "url": m.get("url") or None,
                 "score": round(float(score), 3),
                 "snippet": doc.page_content,
                 "start": m["start_index"],
@@ -192,7 +198,10 @@ def get_passage(doc_id: str, start: int, end: int, context_chars: int = 600) -> 
         row = conn.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
     if not row:
         return None
-    text = row["text"]
+    return passage_context(row["text"], start, end, context_chars)
+
+
+def passage_context(text: str, start: int, end: int, context_chars: int = 600) -> dict:
     start, end = max(0, start), min(len(text), end)
     before_start = max(0, start - context_chars)
     after_end = min(len(text), end + context_chars)

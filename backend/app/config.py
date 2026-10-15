@@ -28,6 +28,11 @@ STRONG_RELEVANCE = 0.68    # above this a chunk/sentence is evidence even with n
 ANSWER_SENTENCES = 6       # max sentences in the extractive answer
 MIN_SENTENCE_SCORE = 0.53  # a sentence must be at least this close to the query
 
+# Opt-in web fallback
+WEB_MAX_PAGES = 6          # pages read per web search
+WEB_MAX_CHARS = 20_000     # text kept per page (keeps embedding fast)
+WEB_TIMEOUT = 8.0          # seconds per HTTP request
+
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
 CONTENT_TYPES = ["article", "interview", "footage_notes", "document"]
