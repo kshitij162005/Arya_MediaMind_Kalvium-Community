@@ -44,6 +44,7 @@ export const api = {
   search: (query, filters) => request('/search', { method: 'POST', body: { query, filters } }),
   searchWeb: (query) => request('/search/web', { method: 'POST', body: { query } }),
   facets: () => request('/facets'),
+  overview: () => request('/overview'),
   history: () => request('/searches'),
   clearHistory: () => request('/searches', { method: 'DELETE' }),
 
@@ -68,6 +69,12 @@ export const CONTENT_TYPE_LABELS = {
   document: 'Document',
 };
 
+/** "3 articles", "1 interview", "2 footage notes". */
+export const typeCount = (type, n) => {
+  const label = (CONTENT_TYPE_LABELS[type] ?? type).toLowerCase();
+  return `${n} ${n === 1 || label.endsWith('s') ? label : `${label}s`}`;
+};
+
 // Archive types plus 'web', which only appears on web search results.
 export const SOURCE_TYPE_LABELS = { ...CONTENT_TYPE_LABELS, web: 'Web' };
 
@@ -76,3 +83,16 @@ export function formatDate(iso) {
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+/** "5 min ago" for SQLite UTC timestamps ("YYYY-MM-DD HH:MM:SS"). */
+export function timeAgo(utc) {
+  const seconds = (Date.now() - new Date(`${utc.replace(' ', 'T')}Z`).getTime()) / 1000;
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
+  if (seconds < 86400 * 30) return `${Math.floor(seconds / 86400)} d ago`;
+  return formatDate(utc.slice(0, 10));
+}
+
+export const initials = (name = '') =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';

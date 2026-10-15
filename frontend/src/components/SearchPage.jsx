@@ -1,12 +1,13 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Search, SlidersHorizontal, AlertTriangle, Globe } from 'lucide-react';
-import { api } from '../api';
+import { AlertTriangle, Check, Copy, Globe, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { api, formatDate } from '../api';
 import Filters from './Filters';
 import { EMPTY_FILTERS, activeFilterCount } from '../filters';
 import SourceCard from './SourceCard';
 import PassagePanel from './PassagePanel';
 import DocumentViewer from './DocumentViewer';
 import UploadModal from './UploadModal';
+import HomeOverview from './HomeOverview';
 
 const FALLBACK_EXAMPLES = [
   'What happened during the 2019 protests in Mumbai?',
@@ -29,6 +30,41 @@ function suggestionsFrom(docs) {
   return out;
 }
 
+function greeting(name) {
+  const h = new Date().getHours();
+  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return `${part}, ${name.split(' ')[0]}`;
+}
+
+/** Plain-text answer with [n] markers and a numbered source list, for pasting into a draft. */
+function answerAsText(result) {
+  const cited = result.sources.filter((s) => s.cited);
+  const body = result.answer.map((c) => `${c.text} [${c.source}]`).join(' ');
+  const refs = cited.map((s) =>
+    `[${s.n}] ${[s.title, s.author, s.publication, s.content_type === 'web' ? null : s.date && formatDate(s.date), s.url]
+      .filter(Boolean).join(', ')}`);
+  return `${body}\n\nSources:\n${refs.join('\n')}`;
+}
+
+function CopyButton({ result }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(answerAsText(result));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard blocked; nothing useful to show */
+    }
+  };
+  return (
+    <button className="btn ghost small" onClick={copy} title="Copy the answer with its source list">
+      {copied ? <Check size={14} /> : <Copy size={14} />}
+      {copied ? 'Copied' : 'Copy with citations'}
+    </button>
+  );
+}
+
 function AnswerText({ result, citation, onCite }) {
   const sourcesByN = Object.fromEntries(result.sources.map((s) => [s.n, s]));
   return (
@@ -49,16 +85,23 @@ function AnswerText({ result, citation, onCite }) {
   );
 }
 
-function SourceList({ title, sources, onCite, onOpen, onSave }) {
-  if (!sources.length) return null;
+function SourceList({ title, sources, settings, onCite, onOpen, onSave }) {
+  const shown = settings.showRelated ? sources : sources.filter((s) => s.cited);
+  if (!shown.length) return null;
   return (
     <section>
-      <h2 className="section-title">{title}</h2>
+      <div className="section-head">
+        <h2>{title}</h2>
+        {!settings.showRelated && shown.length < sources.length && (
+          <span className="muted small">{sources.length - shown.length} related hidden</span>
+        )}
+      </div>
       <div className="source-list">
-        {sources.map((s) => (
+        {shown.map((s) => (
           <SourceCard
             key={s.doc_id}
             source={s}
+            showScore={settings.showScores}
             onViewPassage={() => onCite({ source: s })}
             onOpen={() => onOpen({ docId: s.doc_id, start: s.start, end: s.end })}
             onSave={() => onSave?.(s)}
@@ -69,10 +112,11 @@ function SourceList({ title, sources, onCite, onOpen, onSave }) {
   );
 }
 
-export default function SearchPage({ ref, active }) {
+export default function SearchPage({ ref, active, user, settings }) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [facets, setFacets] = useState(null);
+  const [overview, setOverview] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -84,21 +128,31 @@ export default function SearchPage({ ref, active }) {
   const [notice, setNotice] = useState('');
   const lastQuery = useRef('');
   const requestId = useRef(0);
-
-  const [examples, setExamples] = useState([]);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     api.facets().then(setFacets).catch(() => {});
   }, []);
 
-  const loadExamples = () =>
-    api.documents({ sort: 'recent', limit: 20 })
-      .then((docs) => setExamples(suggestionsFrom(docs)))
-      .catch(() => {});
+  const loadOverview = () => api.overview().then(setOverview).catch(() => {});
 
-  // Refresh on every return to the tab so new uploads show up straight away.
+  // Refresh on every return to the tab so new uploads and searches show up straight away.
   useEffect(() => {
-    if (active) loadExamples();
+    if (active) loadOverview();
+  }, [active]);
+
+  // "/" focuses the search box from anywhere on the page.
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e) => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
+      if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [active]);
 
   const onWebSourceSaved = (doc) => {
@@ -109,9 +163,10 @@ export default function SearchPage({ ref, active }) {
       ...w,
       result: { ...w.result, sources: w.result.sources.map((s) => (s.url === url ? { ...s, in_archive: true } : s)) },
     });
-    loadExamples();
+    loadOverview();
   };
 
+  const examples = overview ? suggestionsFrom(overview.recent_documents) : [];
   const shownExamples = examples.length ? examples : FALLBACK_EXAMPLES;
 
   const runSearch = async (q = query, f = filters) => {
@@ -137,13 +192,27 @@ export default function SearchPage({ ref, active }) {
     }
   };
 
+  const ask = (q, f = filters) => {
+    setQuery(q);
+    runSearch(q, f);
+  };
+
+  // Back to the home view.
+  const reset = () => {
+    requestId.current++;
+    lastQuery.current = '';
+    setQuery('');
+    setResult(null);
+    setError('');
+    setLoading(false);
+    setWeb(null);
+    setNotice('');
+    loadOverview();
+    inputRef.current?.focus();
+  };
+
   // Lets other pages (History) run a query here.
-  useImperativeHandle(ref, () => ({
-    run(q) {
-      setQuery(q);
-      runSearch(q, filters);
-    },
-  }));
+  useImperativeHandle(ref, () => ({ run: (q) => ask(q) }));
 
   const searchWeb = async () => {
     const id = requestId.current;
@@ -161,6 +230,12 @@ export default function SearchPage({ ref, active }) {
     if (lastQuery.current) runSearch(lastQuery.current, next);
   };
 
+  const browseTopic = (topic) => {
+    const next = { ...EMPTY_FILTERS, topics: [topic] };
+    setFilters(next);
+    ask(`Tell me about ${topic}`, next);
+  };
+
   const filterCount = activeFilterCount(filters);
   const hasResults = result || loading || error;
 
@@ -168,6 +243,7 @@ export default function SearchPage({ ref, active }) {
     <div className={`search-page ${hasResults ? 'has-results' : ''}`}>
       {!hasResults && (
         <div className="hero">
+          <span className="kicker"><Sparkles size={14} /> {greeting(user.name)}</span>
           <h1>Ask the archive</h1>
           <p className="muted">Answers are built only from archived articles, interviews and footage notes, and every sentence is cited.</p>
         </div>
@@ -176,11 +252,20 @@ export default function SearchPage({ ref, active }) {
       <form className="search-bar" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
         <Search size={18} className="muted" />
         <input
+          ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ask a question, e.g. What happened during the 2019 protests in Mumbai?"
+          aria-label="Search the archive"
           autoFocus
         />
+        {query || hasResults ? (
+          <button type="button" className="icon-btn" onClick={reset} title="Clear and go back" aria-label="Clear search">
+            <X size={16} />
+          </button>
+        ) : (
+          <kbd className="kbd" title="Press / to search">/</kbd>
+        )}
         <button
           type="button"
           className={`btn ghost ${showFilters || filterCount ? 'on' : ''}`}
@@ -200,13 +285,22 @@ export default function SearchPage({ ref, active }) {
       {showFilters && facets && <Filters facets={facets} value={filters} onChange={changeFilters} />}
 
       {!hasResults && (
-        <div className="examples">
-          {shownExamples.map((ex) => (
-            <button key={ex} className="chip" onClick={() => { setQuery(ex); runSearch(ex); }}>
-              {ex}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="examples">
+            <span className="muted small">Try</span>
+            {shownExamples.map((ex) => (
+              <button key={ex} className="chip" onClick={() => ask(ex)}>{ex}</button>
+            ))}
+          </div>
+          {settings.showOverview && overview && (
+            <HomeOverview
+              overview={overview}
+              onSearch={(q) => ask(q)}
+              onTopic={browseTopic}
+              onOpenDoc={(docId) => setViewerDoc({ docId })}
+            />
+          )}
+        </>
       )}
 
       {error && <div className="alert error">{error}</div>}
@@ -218,9 +312,12 @@ export default function SearchPage({ ref, active }) {
           <section className="card answer">
             <div className="section-head">
               <h2>Background</h2>
-              <span className="muted small">
-                {result.sources.length} source{result.sources.length === 1 ? '' : 's'} · {result.took_ms} ms
-              </span>
+              <div className="row">
+                <span className="muted small">
+                  {result.sources.length} source{result.sources.length === 1 ? '' : 's'} · {result.took_ms} ms
+                </span>
+                {result.sufficient && <CopyButton result={result} />}
+              </div>
             </div>
 
             {result.sufficient ? (
@@ -239,7 +336,7 @@ export default function SearchPage({ ref, active }) {
                     No archived document answers this question with confidence, so no answer was generated.
                     {filterCount > 0 && ' Try removing some filters.'}
                   </p>
-                  {!web && (
+                  {settings.webFallback && !web && (
                     <button className="btn small web-btn" onClick={searchWeb}>
                       <Globe size={14} /> Search the web instead
                     </button>
@@ -249,18 +346,26 @@ export default function SearchPage({ ref, active }) {
             )}
           </section>
 
-          <SourceList title="Sources" sources={result.sources} onCite={setCitation} onOpen={setViewerDoc} />
+          <SourceList title="Sources" sources={result.sources} settings={settings} onCite={setCitation} onOpen={setViewerDoc} />
 
-          {web?.loading && <div className="card skeleton" />}
+          {web?.loading && (
+            <div className="card web-loading">
+              <Globe size={16} className="spin-slow" />
+              <span className="muted">Searching Wikipedia and the web and reading pages… this can take 10–15 seconds.</span>
+            </div>
+          )}
           {web?.error && <div className="alert error">Web search failed: {web.error}</div>}
           {web?.result && (
             <>
               <section className="card answer web-answer">
                 <div className="section-head">
                   <h2><Globe size={16} /> From the web</h2>
-                  <span className="muted small">
-                    {web.result.pages_read} page{web.result.pages_read === 1 ? '' : 's'} read · {web.result.took_ms} ms
-                  </span>
+                  <div className="row">
+                    <span className="muted small">
+                      {web.result.pages_read} page{web.result.pages_read === 1 ? '' : 's'} read · {web.result.took_ms} ms
+                    </span>
+                    {web.result.sufficient && <CopyButton result={web.result} />}
+                  </div>
                 </div>
                 <p className="web-warning small">
                   Not from the archive and not verified by the newsroom. Check each source before using it.
@@ -280,6 +385,7 @@ export default function SearchPage({ ref, active }) {
               <SourceList
                 title="Web sources"
                 sources={web.result.sources}
+                settings={settings}
                 onCite={setCitation}
                 onOpen={setViewerDoc}
                 onSave={setSavingSource}

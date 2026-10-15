@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Search, Trash2 } from 'lucide-react';
-import { api, CONTENT_TYPE_LABELS, formatDate } from '../api';
+import { FileText, Film, Inbox, Mic, Newspaper, Plus, Search, Trash2 } from 'lucide-react';
+import { api, CONTENT_TYPE_LABELS, formatDate, timeAgo, typeCount } from '../api';
+
+const TYPE_ICONS = { article: Newspaper, interview: Mic, footage_notes: Film, document: FileText };
 import UploadModal from './UploadModal';
 import DocumentViewer from './DocumentViewer';
 
@@ -13,6 +15,12 @@ export default function ArchivePage() {
   const [viewing, setViewing] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [notice, setNotice] = useState('');
+  const [counts, setCounts] = useState(null); // documents per type, unaffected by the filters
+
+  const loadCounts = useCallback(() => {
+    api.overview().then((o) => setCounts({ total: o.documents, passages: o.passages, ...o.by_type })).catch(() => {});
+  }, []);
+  useEffect(loadCounts, [loadCounts]);
 
   const load = useCallback(() => {
     api.documents({ q, content_type: type })
@@ -30,6 +38,7 @@ export default function ArchivePage() {
       await api.deleteDocument(id);
       setConfirmDelete(null);
       load();
+      loadCounts();
     } catch (e) {
       setError(e.message);
     }
@@ -40,7 +49,9 @@ export default function ArchivePage() {
       <div className="page-head">
         <div>
           <h1>Archive</h1>
-          <p className="muted">{docs ? `${docs.length} document${docs.length === 1 ? '' : 's'} indexed` : 'Loading…'}</p>
+          <p className="muted">
+            {counts ? `${counts.total} document${counts.total === 1 ? '' : 's'} · ${counts.passages.toLocaleString()} searchable passages` : 'Loading…'}
+          </p>
         </div>
         <button className="btn primary" onClick={() => setShowUpload(true)}>
           <Plus size={16} /> Upload document
@@ -49,6 +60,28 @@ export default function ArchivePage() {
 
       {notice && <div className="alert success" onClick={() => setNotice('')}>{notice}</div>}
       {error && <div className="alert error">{error}</div>}
+
+      {counts && (
+        <div className="type-tiles">
+          {Object.keys(CONTENT_TYPE_LABELS).map((t) => {
+            const Icon = TYPE_ICONS[t];
+            return (
+              <button
+                key={t}
+                className={`card type-tile ${type === t ? 'on' : ''}`}
+                onClick={() => setType(type === t ? '' : t)}
+                aria-pressed={type === t}
+              >
+                <span className="doc-icon"><Icon size={16} /></span>
+                <span>
+                  <span className="stat-value">{counts[t] ?? 0}</span>
+                  <span className="muted small tile-label">{typeCount(t, counts[t] ?? 0).replace(/^\d+ /, '')}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="toolbar">
         <div className="input-icon">
@@ -62,7 +95,11 @@ export default function ArchivePage() {
       </div>
 
       {docs && docs.length === 0 && (
-        <div className="empty muted">No documents found. Upload one to get started.</div>
+        <div className="card empty-state">
+          <Inbox size={28} />
+          <h3>{q || type ? 'No matching documents' : 'The archive is empty'}</h3>
+          <p className="muted">{q || type ? 'Try a different filter.' : 'Upload articles, transcripts or footage notes to get started.'}</p>
+        </div>
       )}
 
       {docs && docs.length > 0 && (
@@ -74,6 +111,7 @@ export default function ArchivePage() {
                 <th>Type</th>
                 <th>Author / Source</th>
                 <th>Date</th>
+                <th>Added</th>
                 <th aria-label="Actions" />
               </tr>
             </thead>
@@ -87,6 +125,7 @@ export default function ArchivePage() {
                   <td><span className="badge">{CONTENT_TYPE_LABELS[d.content_type] ?? d.content_type}</span></td>
                   <td className="muted">{[d.author, d.publication].filter(Boolean).join(' · ') || '—'}</td>
                   <td className="muted nowrap">{formatDate(d.date)}</td>
+                  <td className="muted nowrap small">{timeAgo(d.created_at)}</td>
                   <td className="right nowrap">
                     {confirmDelete === d.id ? (
                       <>
@@ -113,6 +152,7 @@ export default function ArchivePage() {
             setShowUpload(false);
             setNotice(`“${doc.title}” was indexed into ${doc.chunk_count} searchable passage${doc.chunk_count === 1 ? '' : 's'}.`);
             load();
+            loadCounts();
           }}
         />
       )}
