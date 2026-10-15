@@ -4,10 +4,11 @@ import { api, CONTENT_TYPE_LABELS } from '../api';
 
 const EMPTY = { title: '', content_type: 'article', author: '', publication: '', date: '', topic: '', url: '', text: '' };
 
-export default function UploadModal({ onClose, onUploaded }) {
-  const [form, setForm] = useState(EMPTY);
+/** `initial` prefills the form (e.g. a web page being saved); everything stays editable. */
+export default function UploadModal({ onClose, onUploaded, initial, heading = 'Upload to archive' }) {
+  const [form, setForm] = useState(() => ({ ...EMPTY, ...initial }));
   const [file, setFile] = useState(null);
-  const [mode, setMode] = useState('file');
+  const [mode, setMode] = useState(initial?.text ? 'text' : 'file');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,7 +44,7 @@ export default function UploadModal({ onClose, onUploaded }) {
     <div className="modal-wrap" onClick={onClose}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="panel-head">
-          <h2>Upload to archive</h2>
+          <h2>{heading}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
 
@@ -66,7 +67,7 @@ export default function UploadModal({ onClose, onUploaded }) {
         ) : (
           <label className="field">
             <span>Document text</span>
-            <textarea rows={6} value={form.text} onChange={set('text')} placeholder="Paste an article, transcript or footage notes…" />
+            <textarea rows={initial?.text ? 12 : 6} value={form.text} onChange={set('text')} placeholder="Paste an article, transcript or footage notes…" />
           </label>
         )}
 

@@ -30,7 +30,8 @@ MIN_SENTENCE_SCORE = 0.53  # a sentence must be at least this close to the query
 
 # Opt-in web fallback
 WEB_MAX_PAGES = 6          # pages read per web search
-WEB_MAX_CHARS = 20_000     # text kept per page (keeps embedding fast)
+WEB_MAX_CHARS = 20_000     # text embedded per page (keeps embedding fast)
+WEB_SAVE_MAX_CHARS = 200_000  # text offered for "Save to archive" per page
 WEB_TIMEOUT = 8.0          # seconds per HTTP request
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")

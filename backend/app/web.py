@@ -15,7 +15,8 @@ import httpx
 import numpy as np
 import trafilatura
 
-from .config import TOP_K, WEB_MAX_CHARS, WEB_MAX_PAGES, WEB_TIMEOUT
+from .config import TOP_K, WEB_MAX_CHARS, WEB_MAX_PAGES, WEB_SAVE_MAX_CHARS, WEB_TIMEOUT
+from .db import get_conn
 from .ingest import _splitter
 from .rag import _STOPWORDS, _cosine, compose_answer, gate_hits, passage_context
 from .vectorstore import get_embeddings
@@ -48,7 +49,8 @@ def search_wikipedia(client: httpx.Client, query: str, limit: int = 3) -> list[d
         })
         r.raise_for_status()
         page = r.json()["query"]["pages"][0]
-        return {"title": page["title"], "url": page["fullurl"], "text": page.get("extract", "")}
+        return {"title": page["title"], "url": page["fullurl"], "text": page.get("extract", ""),
+                "publication": "Wikipedia"}
 
     with ThreadPoolExecutor(max_workers=limit) as pool:
         return list(pool.map(fetch, titles))
@@ -87,8 +89,19 @@ def scrape(client: httpx.Client, page: dict) -> dict | None:
         return None
     if "html" not in res.headers.get("content-type", ""):
         return None
-    text = trafilatura.extract(res.text, include_comments=False, include_tables=False)
-    return {**page, "text": text} if text else None
+    doc = trafilatura.bare_extraction(res.text, url=url, with_metadata=True,
+                                      include_comments=False, include_tables=False)
+    if not doc or not doc.text:
+        return None
+    return {**page, "text": doc.text, "title": doc.title or page["title"], "author": doc.author or "",
+            "publication": doc.sitename or "", "date": _iso_date(doc.date)}
+
+
+def _iso_date(value) -> str:
+    try:
+        return date.fromisoformat(str(value)[:10]).isoformat()
+    except (TypeError, ValueError):
+        return ""
 
 
 def gather_pages(query: str) -> tuple[list[dict], list[str]]:
@@ -112,7 +125,8 @@ def gather_pages(query: str) -> tuple[list[dict], list[str]]:
         text = (p["text"] or "").strip()
         if len(text) >= 200 and p["url"] not in seen:
             seen.add(p["url"])
-            unique.append({**p, "text": text[:WEB_MAX_CHARS]})
+            # Only a prefix is embedded for speed; the full text is kept for saving to the archive.
+            unique.append({**p, "text": text[:WEB_MAX_CHARS], "full_text": text[:WEB_SAVE_MAX_CHARS]})
     return unique[:WEB_MAX_PAGES], failed
 
 
@@ -126,14 +140,15 @@ def answer_from_web(query: str) -> dict:
     if not pages:
         return {**base, "sufficient": False, "answer": [], "sources": []}
 
-    texts, chunks = {}, []
+    texts, by_id, chunks = {}, {}, []
     for i, page in enumerate(pages):
         doc_id = f"web-{i}"
         texts[doc_id] = page["text"]
+        by_id[doc_id] = page
         meta = {
             "doc_id": doc_id,
             "title": page["title"],
-            "publication": urlparse(page["url"]).netloc.removeprefix("www."),
+            "publication": _domain(page["url"]),
             "content_type": "web",
             "url": page["url"],
         }
@@ -153,5 +168,28 @@ def answer_from_web(query: str) -> dict:
     # Web pages are not stored, so ship the passage context with the result for verification.
     for item in result["answer"] + result["sources"]:
         item["passage"] = passage_context(texts[item["doc_id"]], item["start"], item["end"])
+
+    # Prefilled, editable details for "Save to archive".
+    urls = [s["url"] for s in result["sources"]]
+    with get_conn() as conn:
+        saved = {r[0] for r in conn.execute(
+            f"SELECT url FROM documents WHERE url IN ({','.join('?' * len(urls))})", urls)} if urls else set()
+    for src in result["sources"]:
+        page = by_id[src["doc_id"]]
+        src["in_archive"] = page["url"] in saved
+        src["save"] = {
+            "title": page["title"],
+            "content_type": "article",
+            "author": page.get("author", ""),
+            "publication": page.get("publication") or _domain(page["url"]),
+            "date": page.get("date", ""),
+            "topic": "",
+            "url": page["url"],
+            "text": page["full_text"],
+        }
     return {**base, **result}
+
+
+def _domain(url: str) -> str:
+    return urlparse(url).netloc.removeprefix("www.")
 

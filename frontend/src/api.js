@@ -66,8 +66,10 @@ export const CONTENT_TYPE_LABELS = {
   interview: 'Interview',
   footage_notes: 'Footage notes',
   document: 'Document',
-  web: 'Web',
 };
+
+// Archive types plus 'web', which only appears on web search results.
+export const SOURCE_TYPE_LABELS = { ...CONTENT_TYPE_LABELS, web: 'Web' };
 
 export function formatDate(iso) {
   if (!iso) return 'Undated';

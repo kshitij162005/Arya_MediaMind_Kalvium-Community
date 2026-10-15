@@ -6,6 +6,7 @@ import { EMPTY_FILTERS, activeFilterCount } from '../filters';
 import SourceCard from './SourceCard';
 import PassagePanel from './PassagePanel';
 import DocumentViewer from './DocumentViewer';
+import UploadModal from './UploadModal';
 
 const FALLBACK_EXAMPLES = [
   'What happened during the 2019 protests in Mumbai?',
@@ -48,7 +49,7 @@ function AnswerText({ result, citation, onCite }) {
   );
 }
 
-function SourceList({ title, sources, onCite, onOpen }) {
+function SourceList({ title, sources, onCite, onOpen, onSave }) {
   if (!sources.length) return null;
   return (
     <section>
@@ -60,6 +61,7 @@ function SourceList({ title, sources, onCite, onOpen }) {
             source={s}
             onViewPassage={() => onCite({ source: s })}
             onOpen={() => onOpen({ docId: s.doc_id, start: s.start, end: s.end })}
+            onSave={() => onSave?.(s)}
           />
         ))}
       </div>
@@ -78,6 +80,8 @@ export default function SearchPage({ ref, active }) {
   const [citation, setCitation] = useState(null); // { claim?, source }
   const [viewerDoc, setViewerDoc] = useState(null); // { docId, start, end }
   const [web, setWeb] = useState(null); // { loading, result?, error? } for the opt-in web fallback
+  const [savingSource, setSavingSource] = useState(null); // web source being saved to the archive
+  const [notice, setNotice] = useState('');
   const lastQuery = useRef('');
   const requestId = useRef(0);
 
@@ -87,13 +91,26 @@ export default function SearchPage({ ref, active }) {
     api.facets().then(setFacets).catch(() => {});
   }, []);
 
-  // Refresh on every return to the tab so new uploads show up straight away.
-  useEffect(() => {
-    if (!active) return;
+  const loadExamples = () =>
     api.documents({ sort: 'recent', limit: 20 })
       .then((docs) => setExamples(suggestionsFrom(docs)))
       .catch(() => {});
+
+  // Refresh on every return to the tab so new uploads show up straight away.
+  useEffect(() => {
+    if (active) loadExamples();
   }, [active]);
+
+  const onWebSourceSaved = (doc) => {
+    const url = savingSource.url;
+    setSavingSource(null);
+    setNotice(`“${doc.title}” was added to the archive (${doc.chunk_count} searchable passage${doc.chunk_count === 1 ? '' : 's'}).`);
+    setWeb((w) => w?.result && {
+      ...w,
+      result: { ...w.result, sources: w.result.sources.map((s) => (s.url === url ? { ...s, in_archive: true } : s)) },
+    });
+    loadExamples();
+  };
 
   const shownExamples = examples.length ? examples : FALLBACK_EXAMPLES;
 
@@ -106,6 +123,7 @@ export default function SearchPage({ ref, active }) {
     setError('');
     setCitation(null);
     setWeb(null);
+    setNotice('');
     try {
       const res = await api.search(text, f);
       if (id === requestId.current) setResult(res);
@@ -258,7 +276,14 @@ export default function SearchPage({ ref, active }) {
                   </p>
                 )}
               </section>
-              <SourceList title="Web sources" sources={web.result.sources} onCite={setCitation} onOpen={setViewerDoc} />
+              {notice && <div className="alert success" onClick={() => setNotice('')}>{notice}</div>}
+              <SourceList
+                title="Web sources"
+                sources={web.result.sources}
+                onCite={setCitation}
+                onOpen={setViewerDoc}
+                onSave={setSavingSource}
+              />
             </>
           )}
         </div>
@@ -276,6 +301,14 @@ export default function SearchPage({ ref, active }) {
         />
       )}
       {viewerDoc && <DocumentViewer {...viewerDoc} onClose={() => setViewerDoc(null)} />}
+      {savingSource && (
+        <UploadModal
+          heading="Save web page to archive"
+          initial={savingSource.save}
+          onClose={() => setSavingSource(null)}
+          onUploaded={onWebSourceSaved}
+        />
+      )}
     </div>
   );
 }
