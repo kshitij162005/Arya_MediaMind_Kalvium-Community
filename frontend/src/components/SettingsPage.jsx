@@ -1,6 +1,17 @@
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { initials } from '../api';
 import { ACCENTS, DEFAULT_SETTINGS } from '../settings';
+import { speechSupported, useVoices } from '../speech';
+import ListenButton from './ListenButton';
+
+const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
+
+// Voices matching the browser language first, then the rest, each alphabetically.
+function sortVoices(voices) {
+  const lang = (navigator.language || 'en').slice(0, 2);
+  return [...voices].sort((a, b) =>
+    (b.lang.startsWith(lang) - a.lang.startsWith(lang)) || a.name.localeCompare(b.name));
+}
 
 function Segmented({ value, options, onChange }) {
   return (
@@ -44,6 +55,7 @@ function Row({ title, hint, children }) {
 
 export default function SettingsPage({ settings, onChange, user, onLogout }) {
   const set = (key) => (value) => onChange({ ...settings, [key]: value });
+  const voices = sortVoices(useVoices());
   const isDefault = Object.entries(DEFAULT_SETTINGS).every(([k, v]) => settings[k] === v);
 
   return (
@@ -131,6 +143,38 @@ export default function SettingsPage({ settings, onChange, user, onLogout }) {
             <Row title="Offer web search" hint="When the archive has no answer, offer to search Wikipedia and the web.">
               <Toggle label="Offer web search" checked={settings.webFallback} onChange={set('webFallback')} />
             </Row>
+          </section>
+
+          <section className="card settings-section">
+            <h2>Read aloud</h2>
+            {speechSupported ? (
+              <>
+                <Row title="Voice" hint="Uses voices installed on this device. Free, unlimited and offline.">
+                  <select className="voice-select" value={settings.voice} onChange={(e) => set('voice')(e.target.value)}>
+                    <option value="">System default</option>
+                    {voices.map((v) => (
+                      <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>
+                    ))}
+                  </select>
+                </Row>
+                <Row title="Speed">
+                  <Segmented
+                    value={settings.speechRate}
+                    onChange={set('speechRate')}
+                    options={SPEEDS.map((r) => ({ value: r, label: `${r}×` }))}
+                  />
+                </Row>
+                <Row title="Try it" hint="Listen buttons appear on answers, sources, passages and documents.">
+                  <ListenButton
+                    id="settings-test"
+                    label="Test voice"
+                    parts={['This is how MediaMind reads answers, passages and documents aloud.']}
+                  />
+                </Row>
+              </>
+            ) : (
+              <p className="muted small">This browser doesn't support read-aloud. Try Chrome, Edge or Safari.</p>
+            )}
           </section>
 
           <section className="card settings-section">

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { api, CONTENT_TYPE_LABELS, formatDate } from '../api';
+import ListenButton from './ListenButton';
+
+const paragraphs = (text) => text.split(/\n\s*\n/);
 
 /** Full original document, with an optional highlighted range scrolled into view. */
 export default function DocumentViewer({ docId, start, end, onClose }) {
@@ -30,6 +33,20 @@ export default function DocumentViewer({ docId, start, end, onClose }) {
         <div className="panel-head">
           <span className="muted small">Original document</span>
           <div className="row">
+            {doc && hasRange && (
+              <ListenButton
+                id={`doc-from:${docId}:${start}`}
+                label="Read from highlight"
+                parts={() => paragraphs(doc.text.slice(start))}
+              />
+            )}
+            {doc && (
+              <ListenButton
+                id={`doc:${docId}`}
+                label="Listen"
+                parts={() => [doc.title, ...paragraphs(doc.text)]}
+              />
+            )}
             {doc?.file_name && (
               <button className="btn ghost small" onClick={() => api.openOriginal(docId).catch((e) => setError(e.message))}>
                 <Download size={14} /> {doc.file_name}

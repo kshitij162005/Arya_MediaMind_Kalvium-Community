@@ -13,7 +13,7 @@ export function SourceMeta({ source }) {
   );
 }
 
-export default function SourceCard({ source, onViewPassage, onOpen, onSave, showScore = true }) {
+export default function SourceCard({ source, onViewPassage, onOpen, onSave, listen, showScore = true }) {
   const isWeb = source.content_type === 'web';
   return (
     <article className={`card source ${source.cited ? '' : 'uncited'}`}>
@@ -24,6 +24,7 @@ export default function SourceCard({ source, onViewPassage, onOpen, onSave, show
         <p className="snippet">{source.snippet}</p>
         <div className="source-actions">
           <button className="link" onClick={onViewPassage}>View passage</button>
+          {listen}
           {isWeb ? (
             <>
               <a className="link" href={source.url} target="_blank" rel="noopener noreferrer">Open page ↗</a>
