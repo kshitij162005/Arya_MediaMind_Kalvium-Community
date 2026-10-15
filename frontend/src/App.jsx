@@ -70,7 +70,7 @@ export default function App() {
       <main className="main">
         {/* Search stays mounted so results survive switching tabs. */}
         <div hidden={tab !== 'search'}>
-          <SearchPage ref={searchRef} />
+          <SearchPage ref={searchRef} active={tab === 'search'} />
         </div>
         {tab === 'archive' && <ArchivePage />}
         {tab === 'history' && (

@@ -129,7 +129,8 @@ def facets(user=Depends(auth.current_user)):
 # ---------- documents ----------
 
 @app.get("/api/documents")
-def list_documents(q: str = "", content_type: str = "", user=Depends(auth.current_user)):
+def list_documents(q: str = "", content_type: str = "", sort: str = "date", limit: int | None = Query(None, ge=1),
+                   user=Depends(auth.current_user)):
     sql = f"SELECT {DOC_LIST_FIELDS} FROM documents WHERE 1=1"
     params = []
     if q:
@@ -138,7 +139,11 @@ def list_documents(q: str = "", content_type: str = "", user=Depends(auth.curren
     if content_type:
         sql += " AND content_type = ?"
         params.append(content_type)
-    sql += " ORDER BY date DESC, created_at DESC"
+    # "recent" = most recently added to the archive, "date" = by publication date.
+    sql += " ORDER BY created_at DESC, rowid DESC" if sort == "recent" else " ORDER BY date DESC, created_at DESC"
+    if limit:
+        sql += " LIMIT ?"
+        params.append(limit)
     with get_conn() as conn:
         return [dict(r) for r in conn.execute(sql, params).fetchall()]
 

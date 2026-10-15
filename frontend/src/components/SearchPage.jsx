@@ -7,13 +7,28 @@ import SourceCard from './SourceCard';
 import PassagePanel from './PassagePanel';
 import DocumentViewer from './DocumentViewer';
 
-const EXAMPLES = [
+const FALLBACK_EXAMPLES = [
   'What happened during the 2019 protests in Mumbai?',
   'How did the India-China border tensions develop?',
   'Why did Chennai run out of water in 2019?',
 ];
+const MAX_SUGGESTIONS = 3;
 
-export default function SearchPage({ ref }) {
+// One suggestion per subject, newest uploads first.
+function suggestionsFrom(docs) {
+  const seen = new Set();
+  const out = [];
+  for (const doc of docs) {
+    const subject = (doc.topic || doc.title).trim();
+    if (!subject || seen.has(subject.toLowerCase())) continue;
+    seen.add(subject.toLowerCase());
+    out.push(`Tell me about ${subject}`);
+    if (out.length === MAX_SUGGESTIONS) break;
+  }
+  return out;
+}
+
+export default function SearchPage({ ref, active }) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [facets, setFacets] = useState(null);
@@ -26,9 +41,21 @@ export default function SearchPage({ ref }) {
   const lastQuery = useRef('');
   const requestId = useRef(0);
 
+  const [examples, setExamples] = useState([]);
+
   useEffect(() => {
     api.facets().then(setFacets).catch(() => {});
   }, []);
+
+  // Refresh on every return to the tab so new uploads show up straight away.
+  useEffect(() => {
+    if (!active) return;
+    api.documents({ sort: 'recent', limit: 20 })
+      .then((docs) => setExamples(suggestionsFrom(docs)))
+      .catch(() => {});
+  }, [active]);
+
+  const shownExamples = examples.length ? examples : FALLBACK_EXAMPLES;
 
   const runSearch = async (q = query, f = filters) => {
     const text = q.trim();
@@ -105,7 +132,7 @@ export default function SearchPage({ ref }) {
 
       {!hasResults && (
         <div className="examples">
-          {EXAMPLES.map((ex) => (
+          {shownExamples.map((ex) => (
             <button key={ex} className="chip" onClick={() => { setQuery(ex); runSearch(ex); }}>
               {ex}
             </button>
