@@ -1,169 +1,115 @@
-import React, { useState } from 'react';
-import { UploadCloud, X, FileText, CheckCircle2, ShieldCheck, Database } from 'lucide-react';
+import { useState } from 'react';
+import { Upload, X } from 'lucide-react';
+import { api, CONTENT_TYPE_LABELS } from '../api';
 
-export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
-  const [formData, setFormData] = useState({
-    title: '',
-    author: '',
-    date: '2019-06-20',
-    publication: 'The Daily Chronicle',
-    contentType: 'Article',
-    fileRef: null,
-  });
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+const EMPTY = { title: '', content_type: 'article', author: '', publication: '', date: '', topic: '', url: '', text: '' };
 
-  if (!isOpen) return null;
+export default function UploadModal({ onClose, onUploaded }) {
+  const [form, setForm] = useState(EMPTY);
+  const [file, setFile] = useState(null);
+  const [mode, setMode] = useState('file');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const pickFile = (f) => {
+    setFile(f);
+    if (f && !form.title) setForm({ ...form, title: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ') });
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
-    setIsUploading(true);
-    setTimeout(() => {
-      setIsUploading(false);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        if (onUploadSuccess) onUploadSuccess(formData.title || 'Ingested Document');
-        onClose();
-      }, 1200);
-    }, 1000);
+    setError('');
+    if (mode === 'file' && !file) return setError('Choose a file to upload.');
+    if (mode === 'text' && form.text.trim().length < 20) return setError('Paste the document text (at least a sentence).');
+
+    const data = new FormData();
+    Object.entries(form).forEach(([k, v]) => k !== 'text' && data.append(k, v));
+    if (mode === 'file') data.append('file', file);
+    else data.append('text', form.text);
+
+    setBusy(true);
+    try {
+      onUploaded(await api.upload(data));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-window upload-dialog-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-group">
-            <span className="scanned-pill">
-              <Database size={14} className="text-cyan" />
-              ARCHIVE INGESTION NODE
-            </span>
-            <span className="modal-doc-title">Upload & Index Archival Record</span>
-          </div>
-          <button className="btn-icon-close" onClick={onClose}>
-            <X size={16} />
-          </button>
+    <div className="modal-wrap" onClick={onClose}>
+      <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <div className="panel-head">
+          <h2>Upload to archive</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
 
-        {isSuccess ? (
-          <div className="upload-success-state">
-            <CheckCircle2 size={48} className="text-cyan" />
-            <h3>Document Ingested & Cryptographically Indexed</h3>
-            <p>OCR stream extraction completed. Vector embeddings generated and anchored to cold vault storage.</p>
-          </div>
+        <div className="segmented">
+          <button type="button" className={mode === 'file' ? 'on' : ''} onClick={() => setMode('file')}>File</button>
+          <button type="button" className={mode === 'text' ? 'on' : ''} onClick={() => setMode('text')}>Paste text</button>
+        </div>
+
+        {mode === 'file' ? (
+          <label
+            className={`dropzone ${file ? 'has-file' : ''}`}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); pickFile(e.dataTransfer.files[0]); }}
+          >
+            <input type="file" accept=".pdf,.docx,.txt,.md" hidden onChange={(e) => pickFile(e.target.files[0])} />
+            <Upload size={20} />
+            <span>{file ? file.name : 'Drop a file here or click to browse'}</span>
+            <span className="muted small">PDF, DOCX, TXT or MD</span>
+          </label>
         ) : (
-          <form onSubmit={handleSubmit} className="upload-form">
-            <div className="dropzone-box">
-              <UploadCloud size={32} className="text-cyan mb-2" />
-              <div className="dropzone-label">Drag & drop scanned PDF, TIFF, audio transcript or doc</div>
-              <div className="dropzone-sub">Supported formats: PDF, TXT, DOCX, WAV (OCR & ASR enabled up to 600 DPI)</div>
-              <input 
-                type="file" 
-                className="dropzone-input" 
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      fileRef: e.target.files[0].name,
-                      title: prev.title || e.target.files[0].name.replace(/\.[^/.]+$/, "")
-                    }));
-                  }
-                }} 
-              />
-              {formData.fileRef && (
-                <div className="selected-file-badge">
-                  <FileText size={14} className="text-cyan" />
-                  <span>{formData.fileRef}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="form-grid-2">
-              <div className="form-group">
-                <label>Document Title</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Coastal Freeway Environmental Audit 2019"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Author / Deponent</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Rahul Mehta / Municipal Secretary"
-                  value={formData.author}
-                  onChange={(e) => setFormData({...formData, author: e.target.value})}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Publication Date</label>
-                <input 
-                  type="date" 
-                  className="form-input" 
-                  value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Source / Publication</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. The Daily Chronicle (Print Edition)"
-                  value={formData.publication}
-                  onChange={(e) => setFormData({...formData, publication: e.target.value})}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Content Type</label>
-                <select 
-                  className="form-input"
-                  value={formData.contentType}
-                  onChange={(e) => setFormData({...formData, contentType: e.target.value})}
-                >
-                  <option value="Article">Archival Article / Newsprint</option>
-                  <option value="Transcript">Interview Transcript</option>
-                  <option value="FootageNotes">Archival Footage Notes</option>
-                  <option value="JudicialOrder">Judicial Order / Legal Writ</option>
-                  <option value="GovernmentGazette">Government Gazette / Notification</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Storage Vault Node</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value="Asia-South-1 (Cold Vault B · Encrypted)" 
-                  disabled
-                />
-              </div>
-            </div>
-
-            <div className="upload-form-footer">
-              <div className="crypto-status">
-                <ShieldCheck size={14} className="text-cyan" />
-                <span>Strict Ingestion: SHA256 integrity check enforced</span>
-              </div>
-              <div className="actions">
-                <button type="button" className="btn-secondary-sm" onClick={onClose}>Cancel</button>
-                <button type="submit" className="btn-primary-sm" disabled={isUploading}>
-                  {isUploading ? 'Ingesting & Indexing...' : 'Index Into Archive'}
-                </button>
-              </div>
-            </div>
-          </form>
+          <label className="field">
+            <span>Document text</span>
+            <textarea rows={6} value={form.text} onChange={set('text')} placeholder="Paste an article, transcript or footage notes…" />
+          </label>
         )}
-      </div>
+
+        <div className="form-grid">
+          <label className="field span-2">
+            <span>Title *</span>
+            <input value={form.title} onChange={set('title')} required />
+          </label>
+          <label className="field">
+            <span>Content type *</span>
+            <select value={form.content_type} onChange={set('content_type')}>
+              {Object.entries(CONTENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Date</span>
+            <input type="date" value={form.date} onChange={set('date')} />
+          </label>
+          <label className="field">
+            <span>Author</span>
+            <input value={form.author} onChange={set('author')} />
+          </label>
+          <label className="field">
+            <span>Publication / source</span>
+            <input value={form.publication} onChange={set('publication')} />
+          </label>
+          <label className="field">
+            <span>Topic</span>
+            <input value={form.topic} onChange={set('topic')} placeholder="e.g. Mumbai Coastal Road Protests" />
+          </label>
+          <label className="field">
+            <span>URL / reference</span>
+            <input value={form.url} onChange={set('url')} placeholder="https://…" />
+          </label>
+        </div>
+
+        {error && <div className="alert error">{error}</div>}
+
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" disabled={busy}>{busy ? 'Indexing…' : 'Upload & index'}</button>
+        </div>
+      </form>
     </div>
   );
 }
