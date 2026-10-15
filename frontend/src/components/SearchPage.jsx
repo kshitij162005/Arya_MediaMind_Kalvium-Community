@@ -8,6 +8,8 @@ import PassagePanel from './PassagePanel';
 import DocumentViewer from './DocumentViewer';
 import UploadModal from './UploadModal';
 import HomeOverview from './HomeOverview';
+import ListenButton from './ListenButton';
+import { useSpeech } from '../speech';
 
 const FALLBACK_EXAMPLES = [
   'What happened during the 2019 protests in Mumbai?',
@@ -65,12 +67,16 @@ function CopyButton({ result }) {
   );
 }
 
-function AnswerText({ result, citation, onCite }) {
+const answerSpeechId = (kind, result) => `${kind}:${result.query}:${result.took_ms}`;
+
+function AnswerText({ result, citation, onCite, speechId }) {
   const sourcesByN = Object.fromEntries(result.sources.map((s) => [s.n, s]));
+  const speech = useSpeech();
+  const reading = speech.id === speechId ? speech.index : -1;
   return (
     <p className="answer-text">
       {result.answer.map((claim, i) => (
-        <span key={i}>
+        <span key={i} className={i === reading ? 'speaking' : undefined}>
           {claim.text}{' '}
           <button
             className={`cite ${citation?.claim === claim ? 'active' : ''}`}
@@ -105,6 +111,7 @@ function SourceList({ title, sources, settings, onCite, onOpen, onSave }) {
             onViewPassage={() => onCite({ source: s })}
             onOpen={() => onOpen({ docId: s.doc_id, start: s.start, end: s.end })}
             onSave={() => onSave?.(s)}
+            listen={<ListenButton variant="link" id={`source:${s.doc_id}:${s.start}`} parts={[s.title, s.snippet]} />}
           />
         ))}
       </div>
@@ -316,13 +323,18 @@ export default function SearchPage({ ref, active, user, settings }) {
                 <span className="muted small">
                   {result.sources.length} source{result.sources.length === 1 ? '' : 's'} · {result.took_ms} ms
                 </span>
-                {result.sufficient && <CopyButton result={result} />}
+                {result.sufficient && (
+                  <>
+                    <ListenButton id={answerSpeechId('archive', result)} parts={result.answer.map((c) => c.text)} />
+                    <CopyButton result={result} />
+                  </>
+                )}
               </div>
             </div>
 
             {result.sufficient ? (
               <>
-                <AnswerText result={result} citation={citation} onCite={setCitation} />
+                <AnswerText result={result} citation={citation} onCite={setCitation} speechId={answerSpeechId('archive', result)} />
                 <p className="muted small note">
                   Extracted verbatim from archive documents. Click a number to see the exact passage.
                 </p>
@@ -364,14 +376,19 @@ export default function SearchPage({ ref, active, user, settings }) {
                     <span className="muted small">
                       {web.result.pages_read} page{web.result.pages_read === 1 ? '' : 's'} read · {web.result.took_ms} ms
                     </span>
-                    {web.result.sufficient && <CopyButton result={web.result} />}
+                    {web.result.sufficient && (
+                      <>
+                        <ListenButton id={answerSpeechId('web', web.result)} parts={web.result.answer.map((c) => c.text)} />
+                        <CopyButton result={web.result} />
+                      </>
+                    )}
                   </div>
                 </div>
                 <p className="web-warning small">
                   Not from the archive and not verified by the newsroom. Check each source before using it.
                 </p>
                 {web.result.sufficient ? (
-                  <AnswerText result={web.result} citation={citation} onCite={setCitation} />
+                  <AnswerText result={web.result} citation={citation} onCite={setCitation} speechId={answerSpeechId('web', web.result)} />
                 ) : (
                   <p className="muted">The web search didn't turn up anything that answers this question.</p>
                 )}

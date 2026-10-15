@@ -46,6 +46,7 @@ Full requirements: [media_archive_research_assistant_prd.md](media_archive_resea
 - **Honest "not found."** A relevance check combining meaning and keyword overlap means unrelated documents are never stretched into an answer.
 - **Filters.** Year range, content type, author, publication and topic.
 - **Copy with citations.** Copies the answer with `[n]` markers and a numbered source list, ready to paste into a draft.
+- **Read aloud.** A Listen button on answers (archive and web), source cards, passages and full documents, with play, pause and stop. The answer highlights each sentence as it's read. It uses the browser's built-in speech engine, so it's **free, unlimited and works offline**. Choose the voice and speed in Settings.
 
 **Beyond the archive (opt-in)**
 - **Web fallback.** When the archive has no answer, a button searches Wikipedia and the web. Results use the same quote-and-cite method but appear in a separate section **clearly labelled as unverified**. Pages that block crawlers in `robots.txt` are skipped.
@@ -58,7 +59,7 @@ Full requirements: [media_archive_research_assistant_prd.md](media_archive_resea
 
 **Interface**
 - **Search home dashboard:** archive stats, recently added documents, recent searches, browse by topic, and suggestions based on the newest uploads.
-- **Settings:** light, dark or system theme, 6 accent colours, density, text size, serif or sans answers, and search preferences.
+- **Settings:** light, dark or system theme, 6 accent colours, density, text size, serif or sans answers, read-aloud voice and speed, and search preferences.
 - **Responsive layout** with a sidebar on desktop and a top bar on mobile. Press `/` to jump to the search box.
 - **Login and accounts** with hashed passwords and JWT sessions.
 
@@ -208,7 +209,7 @@ flowchart LR
 | Extraction | pypdf, python-docx, trafilatura |
 | Web fallback | Wikipedia API, ddgs (DuckDuckGo), httpx |
 | Auth | PBKDF2-SHA256 password hashes (200k iterations), JWT (HS256) |
-| Frontend | React 19, Vite 8, lucide-react icons, plain CSS with theme variables |
+| Frontend | React 19, Vite 8, lucide-react icons, plain CSS with theme variables, Web Speech API (read aloud) |
 
 ## Project structure
 
@@ -232,6 +233,7 @@ flowchart LR
 │   │   ├── App.jsx          # shell: sidebar, routing between tabs, settings
 │   │   ├── api.js           # API client + formatting helpers
 │   │   ├── settings.js      # UI preferences (theme, accent, density…)
+│   │   ├── speech.js        # read-aloud engine (Web Speech API)
 │   │   ├── index.css        # design system: theme variables, light/dark, components
 │   │   └── components/      # SearchPage, HomeOverview, PassagePanel, DocumentViewer,
 │   │                        # ArchivePage, UploadModal, HistoryPage, SettingsPage, LoginPage…

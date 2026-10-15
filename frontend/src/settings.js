@@ -1,3 +1,5 @@
+import { setSpeechOptions } from './speech';
+
 // UI preferences. Stored per browser; they only change how the app looks and behaves for this viewer.
 const KEY = 'mm_settings';
 
@@ -20,6 +22,8 @@ export const DEFAULT_SETTINGS = {
   showScores: true, // show "% match" on source cards
   webFallback: true, // offer web search when the archive has no answer
   showOverview: true, // dashboard on the search home screen
+  voice: '', // read-aloud voiceURI; '' = system default
+  speechRate: 1,
 };
 
 export function loadSettings() {
@@ -45,4 +49,5 @@ export function applySettings(s) {
   root.dataset.fontSize = s.fontSize;
   root.dataset.answerFont = s.answerFont;
   root.style.setProperty('--accent', (ACCENTS[s.accent] ?? ACCENTS.blue).value);
+  setSpeechOptions({ rate: s.speechRate, voiceURI: s.voice });
 }

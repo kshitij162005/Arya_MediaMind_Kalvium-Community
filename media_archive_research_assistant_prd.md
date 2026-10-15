@@ -198,10 +198,12 @@ Original document opened
 ### 10.4 Personalisation (Settings)
 - **Appearance:** light, dark or system theme, 6 accent colours, comfortable or compact density, three text sizes, serif or sans typeface for answers, with a live preview.
 - **Search preferences:** show or hide related sources, match scores, the home dashboard and the web fallback offer.
+- **Read aloud:** voice (any voice installed on the device), speed from 0.75× to 2×, and a test button.
 - **Account:** name, email, role and sign out. Preferences are stored per device.
 
 ### 10.5 Research workflow helpers
 - **Copy with citations:** copies the answer with `[n]` markers and a formatted source list for pasting into drafts.
+- **Read aloud:** Listen controls (play, pause, stop) on archive and web answers, source cards, citation passages and full documents (including "read from highlight"). The answer highlights each sentence as it's spoken. It runs on the browser's built-in speech engine, so it's free, unlimited, needs no API key and works offline. Voice and speed are set in Settings.
 - **Search history:** grouped by day, with answered and not-found status, filter indicators and one-click re-run.
 - **Keyboard:** `/` focuses search, and `Esc` closes panels.
 - **Responsive layout:** works on phones and tablets.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../api';
 import { SourceMeta } from './SourceCard';
+import ListenButton from './ListenButton';
 
 /** Side panel showing the exact passage behind a citation, with surrounding context. */
 export default function PassagePanel({ citation, onClose, onOpenDocument }) {
@@ -34,7 +35,16 @@ export default function PassagePanel({ citation, onClose, onOpenDocument }) {
       <aside className="panel" role="dialog" aria-label="Source passage">
         <div className="panel-head">
           <span className="muted small">{isWeb ? 'Web source' : 'Source'} {source.n}</span>
-          <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
+          <div className="row">
+            {passage && (
+              <ListenButton
+                id={`passage:${docId}:${start}`}
+                label="Listen to passage"
+                parts={[passage.before, passage.passage, passage.after]}
+              />
+            )}
+            <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
+          </div>
         </div>
 
         <h3>{source.title}</h3>
