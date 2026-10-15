@@ -64,13 +64,14 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">
+        {/* A real link to "/" so clicking the logo reloads the whole app. */}
+        <a className="brand" href="/" title="Reload MediaMind">
           <span className="brand-mark">M</span>
           <div className="brand-text">
             <span>MediaMind</span>
             <span className="muted small">Archive research</span>
           </div>
-        </div>
+        </a>
 
         <nav className="nav">
           <span className="nav-label">Workspace</span>

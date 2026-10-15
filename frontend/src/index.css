@@ -332,7 +332,8 @@ a.btn { color: inherit; text-decoration: none; }
   background: var(--surface);
   border-right: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 0 6px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 0 6px; color: inherit; text-decoration: none; }
+a.brand { align-self: flex-start; border-radius: 8px; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 .brand-text .small { font-weight: 400; }
 .brand-mark {

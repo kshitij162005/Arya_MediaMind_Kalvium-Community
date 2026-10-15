@@ -33,10 +33,10 @@ export default function LoginPage({ onAuth }) {
   return (
     <div className="auth">
       <section className="auth-intro">
-        <div className="brand brand-lg">
+        <a className="brand brand-lg" href="/" title="Reload MediaMind">
           <span className="brand-mark">M</span>
           <span>MediaMind</span>
-        </div>
+        </a>
         <div>
           <h1>Research the archive.<br />Trust every answer.</h1>
           <p className="muted">The newsroom's research assistant. The AI is never more authoritative than the archive.</p>
